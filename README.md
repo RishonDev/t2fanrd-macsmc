@@ -1,6 +1,6 @@
 # T2FanRD
 
-A refreshed t2fanrd daemon adapted for macsmc on T2 Macs. The earlier t2fanrd implementation was built around applesmc.
+Simple Fan Daemon for T2 Macs, rewritten from the [original Python version](https://github.com/NoaHimesaka1873/t2fand).
 
 ## Compilation
 `cargo build --release`
