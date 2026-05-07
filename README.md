@@ -9,7 +9,7 @@ Simple Fan Daemon for T2 Macs, rewritten from the [original Python version](http
 ### Standard
 1. Run this command to enable fan control:
 ```bash
-sudo printf 'options macsmc_hwmon fan_control=1\n' | sudo tee /etc/modprobe.d/macsmc_hwmon.conf
+printf 'options macsmc_hwmon fan_control=1\n' | sudo tee /etc/modprobe.d/macsmc_hwmon.conf
 ```
 2. Copy the `target/release/t2fanrd` executable to wherever your distro wants executables to be run by root.
 3. Setup the executable to be run automatically at startup, like via a [systemd service](https://github.com/t2linux/fedora/blob/2947fdc909a35f04eb936a4f9c0f33fe4e52d9c2/t2fanrd/t2fanrd.service).
