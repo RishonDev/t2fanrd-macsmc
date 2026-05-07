@@ -1,8 +1,6 @@
 # T2FanRD
 
-Simple Fan Daemon for T2 Macs, rewritten from the [original Python version](https://github.com/NoaHimesaka1873/t2fand).
-
-The daemon now supports both the legacy `applesmc` fan-control sysfs layout and the newer `macsmc` hwmon layout.
+A refreshed t2fanrd daemon adapted for macsmc on T2 Macs. The earlier t2fanrd implementation was built around applesmc.
 
 ## Compilation
 `cargo build --release`
