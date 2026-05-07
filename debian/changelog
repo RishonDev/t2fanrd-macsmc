@@ -1,0 +1,5 @@
+t2fanrd-macsmc (0.1.0-1) unstable; urgency=medium
+
+  * Initial Debian package for the macsmc-adapted t2fanrd daemon.
+
+ -- Rishon Dev <rishon@example.com>  Fri, 08 May 2026 02:40:00 +0530

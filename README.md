@@ -2,8 +2,42 @@
 
 A refreshed t2fanrd daemon adapted for macsmc on T2 Macs. The earlier t2fanrd implementation was built around applesmc.
 
+## Warning
+This project is experimental.
+
+It directly controls T2 Mac fan behavior through `macsmc`. Manual fan control on `macsmc` is not enabled by default, and incorrect settings may lead to poor thermal behavior. Test carefully on your specific machine before relying on it for daily use.
+
 ## Compilation
 `cargo build --release`
+
+## Package Builds
+### Arch Linux
+Build the package with:
+
+```bash
+makepkg -f
+```
+
+This produces a `.pkg.tar.zst` archive in the repo root.
+
+### Fedora
+Create a source tarball, then build the RPM:
+
+```bash
+git archive --format=tar.gz --prefix=t2fanrd-0.1.0/ HEAD -o t2fanrd-macsmc-0.1.0.tar.gz
+rpmbuild -ta t2fanrd-macsmc-0.1.0.tar.gz
+```
+
+This uses [t2fanrd.spec](/home/rishon/T2FanRD/t2fanrd.spec).
+
+### Debian / Ubuntu
+Build the `.deb` package with:
+
+```bash
+dpkg-buildpackage -us -uc -b
+```
+
+This uses the files in [debian](/home/rishon/T2FanRD/debian).
 
 ## Installation
 ### Standard

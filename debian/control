@@ -1,0 +1,19 @@
+Source: t2fanrd-macsmc
+Section: admin
+Priority: optional
+Maintainer: Rishon Dev <rishon@example.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ cargo,
+ rustc
+Standards-Version: 4.7.0
+Homepage: https://github.com/RishonDev/t2fanrd-macsmc
+Rules-Requires-Root: no
+
+Package: t2fanrd-macsmc
+Architecture: amd64
+Depends:
+ ${misc:Depends},
+ systemd
+Description: t2fanrd daemon adapted for macsmc on T2 Macs
+ A refreshed t2fanrd daemon adapted for macsmc on T2 Macs.

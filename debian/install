@@ -1,0 +1,4 @@
+target/release/t2fanrd usr/bin/
+t2fanrd.service lib/systemd/system/
+README.md usr/share/doc/t2fanrd-macsmc/
+LICENCE usr/share/licenses/t2fanrd-macsmc/

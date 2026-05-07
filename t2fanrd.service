@@ -1,0 +1,12 @@
+[Unit]
+Description=t2fanrd fan control daemon
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/t2fanrd
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

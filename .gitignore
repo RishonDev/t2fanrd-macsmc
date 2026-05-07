@@ -1,6 +1,11 @@
 target
+pkg/
+*.pkg.tar.zst
+*.rpm
+*.deb
 *.conf
 *.pid
 *.py
 .vscode
 /result
+src/t2fanrd.service
