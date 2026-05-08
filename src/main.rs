@@ -49,6 +49,21 @@ fn find_hwmon_paths() -> Result<Vec<PathBuf>> {
     Ok(hwmon_paths)
 }
 
+fn hwmon_name(hwmon_path: &std::path::Path) -> Option<String> {
+    let mut name_path = hwmon_path.to_path_buf();
+    name_path.push("name");
+    std::fs::read_to_string(name_path)
+        .ok()
+        .map(|name| name.trim().to_owned())
+}
+
+fn is_apple_fan_hwmon(hwmon_path: &std::path::Path) -> bool {
+    matches!(
+        hwmon_name(hwmon_path).as_deref(),
+        Some("macsmc_hwmon" | "applesmc")
+    )
+}
+
 fn fan_path_from_input(mut path: PathBuf, kind: FanKind) -> Option<FanPath> {
     let fan_name = path
         .file_name()?
@@ -60,6 +75,20 @@ fn fan_path_from_input(mut path: PathBuf, kind: FanKind) -> Option<FanPath> {
 }
 
 fn find_fan_paths() -> Result<NonEmptyVec<FanPath>> {
+    for hwmon_path in find_hwmon_paths()?
+        .into_iter()
+        .filter(|path| is_apple_fan_hwmon(path))
+    {
+        let fan_glob = hwmon_path.display().to_string() + "/fan*_input";
+        let fans = glob::glob(&fan_glob)?
+            .filter_map(Result::ok)
+            .filter_map(|path| fan_path_from_input(path, FanKind::Hwmon));
+
+        if let Some(fans) = NonEmptyVec::collect(fans) {
+            return Ok(fans);
+        }
+    }
+
     let fan = glob::glob("/sys/devices/pci*/*/*/*/APP0001:00/fan*")?
         .filter_map(Result::ok)
         .find(|p| p.exists());
@@ -70,17 +99,6 @@ fn find_fan_paths() -> Result<NonEmptyVec<FanPath>> {
         let fans = glob::glob(&fan_glob)?
             .filter_map(Result::ok)
             .filter_map(|path| fan_path_from_input(path, FanKind::Applesmc));
-
-        if let Some(fans) = NonEmptyVec::collect(fans) {
-            return Ok(fans);
-        }
-    }
-
-    for hwmon_path in find_hwmon_paths()? {
-        let fan_glob = hwmon_path.display().to_string() + "/fan*_input";
-        let fans = glob::glob(&fan_glob)?
-            .filter_map(Result::ok)
-            .filter_map(|path| fan_path_from_input(path, FanKind::Hwmon));
 
         if let Some(fans) = NonEmptyVec::collect(fans) {
             return Ok(fans);
@@ -142,7 +160,10 @@ fn open_temp_files(temps: glob::Paths, temp_buf: &mut String, temp_files: &mut V
 fn find_temp_files(temp_buf: &mut String) -> Result<Vec<std::fs::File>> {
     let mut temp_files = Vec::new();
 
-    for hwmon_path in find_hwmon_paths()? {
+    for hwmon_path in find_hwmon_paths()?
+        .into_iter()
+        .filter(|path| !is_apple_fan_hwmon(path))
+    {
         let temp_glob = hwmon_path.display().to_string() + "/temp*_input";
         open_temp_files(glob::glob(&temp_glob)?, temp_buf, &mut temp_files);
     }
@@ -235,6 +256,7 @@ fn real_main() -> Result<()> {
     }
 
     let res = start_temp_loop(temp_buffer, temp_files, &fans);
+    println!();
     println!("T2 Fan Daemon is shutting down...");
     for fan in fans {
         fan.set_manual(false)?;

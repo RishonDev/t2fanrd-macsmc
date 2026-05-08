@@ -1,5 +1,5 @@
 use std::{
-    io::{IsTerminal, Seek, Write},
+    io::{IsTerminal, Write},
     path::PathBuf,
 };
 
@@ -11,10 +11,10 @@ use crate::{
 #[derive(Debug)]
 enum FanControl {
     ManualOutput {
-        manual_file: std::fs::File,
-        output_file: std::fs::File,
+        manual_path: PathBuf,
+        output_path: PathBuf,
     },
-    Target(std::fs::File),
+    Target(PathBuf),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -60,24 +60,31 @@ impl FanController {
             .parse()
             .map_err(Error::MaxSpeedParse)?;
 
-        let mut open_options = std::fs::OpenOptions::new();
-        open_options.write(true);
-
         let control = match kind {
             FanKind::Hwmon => {
                 let target_path = join_suffix(path, "_target");
-                FanControl::Target(open_options.open(&target_path).map_err(Error::FanOpen)?)
+                std::fs::OpenOptions::new()
+                    .write(true)
+                    .open(&target_path)
+                    .map_err(Error::FanOpen)?;
+                FanControl::Target(target_path)
             }
             FanKind::Applesmc => {
                 let manual_path = join_suffix(path.clone(), "_manual");
-                let manual_file = open_options.open(&manual_path).map_err(Error::FanOpen)?;
+                std::fs::OpenOptions::new()
+                    .write(true)
+                    .open(&manual_path)
+                    .map_err(Error::FanOpen)?;
 
                 let output_path = join_suffix(path, "_output");
-                let output_file = open_options.open(&output_path).map_err(Error::FanOpen)?;
+                std::fs::OpenOptions::new()
+                    .write(true)
+                    .open(&output_path)
+                    .map_err(Error::FanOpen)?;
 
                 FanControl::ManualOutput {
-                    manual_file,
-                    output_file,
+                    manual_path,
+                    output_path,
                 }
             }
         };
@@ -95,10 +102,11 @@ impl FanController {
 
     pub fn set_manual(&self, enabled: bool) -> Result<()> {
         match &self.control {
-            FanControl::ManualOutput { manual_file, .. } => {
-                let mut manual_file = manual_file;
-                manual_file.rewind().map_err(Error::FanWrite)?;
-                manual_file
+            FanControl::ManualOutput { manual_path, .. } => {
+                std::fs::OpenOptions::new()
+                    .write(true)
+                    .open(manual_path)
+                    .map_err(Error::FanOpen)?
                     .write_all(if enabled { b"1" } else { b"0" })
                     .map_err(Error::FanWrite)
             }
@@ -123,17 +131,19 @@ impl FanController {
 
         let speed = speed.to_string();
         match &self.control {
-            FanControl::ManualOutput { output_file, .. } => {
-                let mut output_file = output_file;
-                output_file.rewind().map_err(Error::FanWrite)?;
-                output_file
+            FanControl::ManualOutput { output_path, .. } => {
+                std::fs::OpenOptions::new()
+                    .write(true)
+                    .open(output_path)
+                    .map_err(Error::FanOpen)?
                     .write_all(speed.as_bytes())
                     .map_err(Error::FanWrite)
             }
-            FanControl::Target(target_file) => {
-                let mut target_file = target_file;
-                target_file.rewind().map_err(Error::FanWrite)?;
-                target_file
+            FanControl::Target(target_path) => {
+                std::fs::OpenOptions::new()
+                    .write(true)
+                    .open(target_path)
+                    .map_err(Error::FanOpen)?
                     .write_all(speed.as_bytes())
                     .map_err(Error::FanWrite)
             }
