@@ -17,6 +17,18 @@ enum FanControl {
     Target(std::fs::File),
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum FanKind {
+    Applesmc,
+    Hwmon,
+}
+
+#[derive(Debug)]
+pub struct FanPath {
+    pub path: PathBuf,
+    pub kind: FanKind,
+}
+
 #[derive(Debug)]
 pub struct FanController {
     control: FanControl,
@@ -27,25 +39,14 @@ pub struct FanController {
 }
 
 impl FanController {
-    fn open_writable(open_options: &std::fs::OpenOptions, path: PathBuf) -> Result<std::fs::File> {
-        open_options.open(&path).map_err(|source| Error::FanOpen {
-            path: path.display().to_string(),
-            source,
-        })
-    }
-
-    fn write_file(file: &std::fs::File, value: &[u8]) -> Result<()> {
-        let mut file = file;
-        file.rewind().map_err(Error::FanWrite)?;
-        file.write_all(value).map_err(Error::FanWrite)
-    }
-
-    pub fn new(path: PathBuf, config: FanConfig) -> Result<Self> {
+    pub fn new(fan_path: FanPath, config: FanConfig) -> Result<Self> {
         fn join_suffix(mut path: PathBuf, suffix: &str) -> PathBuf {
             let file_name = path.file_name().unwrap().to_str().unwrap();
             path.set_file_name(format!("{file_name}{suffix}"));
             path
         }
+
+        let FanPath { path, kind } = fan_path;
 
         let min_speed = std::fs::read_to_string(join_suffix(path.clone(), "_min"))
             .map_err(Error::MinSpeedRead)?
@@ -62,17 +63,22 @@ impl FanController {
         let mut open_options = std::fs::OpenOptions::new();
         open_options.write(true);
 
-        let target_path = join_suffix(path.clone(), "_target");
-        let control = if target_path.exists() {
-            FanControl::Target(Self::open_writable(&open_options, target_path)?)
-        } else {
-            let manual_file =
-                Self::open_writable(&open_options, join_suffix(path.clone(), "_manual"))?;
-            let output_file = Self::open_writable(&open_options, join_suffix(path, "_output"))?;
+        let control = match kind {
+            FanKind::Hwmon => {
+                let target_path = join_suffix(path, "_target");
+                FanControl::Target(open_options.open(&target_path).map_err(Error::FanOpen)?)
+            }
+            FanKind::Applesmc => {
+                let manual_path = join_suffix(path.clone(), "_manual");
+                let manual_file = open_options.open(&manual_path).map_err(Error::FanOpen)?;
 
-            FanControl::ManualOutput {
-                manual_file,
-                output_file,
+                let output_path = join_suffix(path, "_output");
+                let output_file = open_options.open(&output_path).map_err(Error::FanOpen)?;
+
+                FanControl::ManualOutput {
+                    manual_file,
+                    output_file,
+                }
             }
         };
 
@@ -90,7 +96,11 @@ impl FanController {
     pub fn set_manual(&self, enabled: bool) -> Result<()> {
         match &self.control {
             FanControl::ManualOutput { manual_file, .. } => {
-                Self::write_file(manual_file, if enabled { b"1" } else { b"0" })
+                let mut manual_file = manual_file;
+                manual_file.rewind().map_err(Error::FanWrite)?;
+                manual_file
+                    .write_all(if enabled { b"1" } else { b"0" })
+                    .map_err(Error::FanWrite)
             }
             FanControl::Target(_) => Ok(()),
         }
@@ -114,9 +124,19 @@ impl FanController {
         let speed = speed.to_string();
         match &self.control {
             FanControl::ManualOutput { output_file, .. } => {
-                Self::write_file(output_file, speed.as_bytes())
+                let mut output_file = output_file;
+                output_file.rewind().map_err(Error::FanWrite)?;
+                output_file
+                    .write_all(speed.as_bytes())
+                    .map_err(Error::FanWrite)
             }
-            FanControl::Target(target_file) => Self::write_file(target_file, speed.as_bytes()),
+            FanControl::Target(target_file) => {
+                let mut target_file = target_file;
+                target_file.rewind().map_err(Error::FanWrite)?;
+                target_file
+                    .write_all(speed.as_bytes())
+                    .map_err(Error::FanWrite)
+            }
         }
     }
 
